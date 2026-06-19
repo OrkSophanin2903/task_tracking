@@ -1,0 +1,17 @@
+# Keep the build context small + never ship secrets/artifacts into the image.
+node_modules
+.nuxt
+.output
+.data
+.nitro
+.cache
+dist
+*.log
+.env
+.env.*
+.git
+.gitignore
+.DS_Store
+Dockerfile
+.dockerignore
+README.md

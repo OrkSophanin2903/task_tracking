@@ -1,0 +1,359 @@
+/* ============================================================================
+   Task Tracker — "Graphite & Signal" design system
+   A dense, hairline-bordered developer-tool aesthetic. Cool graphite neutrals,
+   ink-filled primary actions, a single signal-azure accent reserved for
+   active/selected/focus, and mono numerals as the technical signature.
+   Light tokens live on :root; dark overrides on :root.dark (set by
+   @nuxtjs/color-mode). Component specifics live in scoped <style> blocks.
+   ========================================================================== */
+
+:root {
+  /* Type */
+  --font-sans: 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', 'JetBrains Mono',
+    Menlo, monospace;
+
+  --fs-2xs: 0.66rem; /* uppercase micro-labels, kbd */
+  --fs-xs: 0.72rem; /* meta, chips */
+  --fs-sm: 0.78rem; /* secondary */
+  --fs-base: 0.84rem; /* body / UI */
+  --fs-md: 0.94rem; /* card titles */
+  --fs-lg: 1.12rem; /* section headers */
+  --fs-xl: 1.4rem; /* page / wordmark */
+
+  /* Space — tight 4px grid */
+  --s1: 4px;
+  --s2: 6px;
+  --s3: 8px;
+  --s4: 12px;
+  --s5: 16px;
+  --s6: 24px;
+  --s7: 32px;
+
+  /* Shape */
+  --radius-sm: 5px;
+  --radius: 7px;
+  --radius-lg: 10px;
+  --radius-pill: 999px;
+
+  /* List-view table columns (shared by the header row and each task row so
+     cells line up): Task · Priority · Project · Tags · Due On · Status · Actions */
+  --list-grid: minmax(0, 2.4fr) 80px minmax(0, 1fr) minmax(0, 1.6fr) 160px 140px 64px;
+
+  /* Neutrals — cool graphite */
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #f1f3f5;
+  --surface-3: #e9ecef;
+  --border: #e5e8ec;
+  --border-strong: #d3d8df;
+
+  --text: #14181f;
+  --text-muted: #5b6573;
+  --text-faint: #8c95a3;
+
+  /* Ink = high-contrast primary action (black in light) */
+  --ink: #14181f;
+  --ink-hover: #2a2f38;
+  --on-ink: #ffffff;
+
+  /* Accent — signal azure (active / selected / focus / links only) */
+  --accent: #2e6bff;
+  --accent-hover: #1f57e6;
+  --accent-text: #2e6bff;
+  --accent-soft: #e8efff;
+  --accent-ring: rgba(46, 107, 255, 0.32);
+
+  /* Status (dots + faint column tints) */
+  --status-todo: #8a94a6;
+  --status-in_progress: #e08600;
+  --status-done: #15a66a;
+
+  /* Priority badges (bg + fg) */
+  --prio-high-bg: #fce7df;
+  --prio-high-fg: #c4320a;
+  --prio-medium-bg: #fbf0d6;
+  --prio-medium-fg: #9a6a00;
+  --prio-low-bg: #eef0f3;
+  --prio-low-fg: #5b6573;
+
+  /* Feedback */
+  --danger: #d92d20;
+  --danger-hover: #b42318;
+  --danger-soft: #fdecea;
+
+  /* Elevation */
+  --shadow-sm: 0 1px 2px rgba(16, 20, 28, 0.06);
+  --shadow: 0 2px 6px rgba(16, 20, 28, 0.08), 0 1px 2px rgba(16, 20, 28, 0.05);
+  --shadow-lg: 0 12px 32px rgba(16, 20, 28, 0.16);
+}
+
+:root.dark {
+  --bg: #0b0d10;
+  --surface: #14171c;
+  --surface-2: #181c22;
+  --surface-3: #20262e;
+  --border: #242931;
+  --border-strong: #333b45;
+
+  --text: #e6e9ee;
+  --text-muted: #99a2ae;
+  --text-faint: #6b7480;
+
+  /* Ink inverts to near-white in dark */
+  --ink: #e8ebef;
+  --ink-hover: #ffffff;
+  --on-ink: #0b0d10;
+
+  --accent: #5c8bff;
+  --accent-hover: #7aa0ff;
+  --accent-text: #84a6ff;
+  --accent-soft: rgba(92, 139, 255, 0.14);
+  --accent-ring: rgba(92, 139, 255, 0.42);
+
+  --status-todo: #7b8696;
+  --status-in_progress: #f2a93b;
+  --status-done: #34c98a;
+
+  --prio-high-bg: rgba(255, 138, 91, 0.15);
+  --prio-high-fg: #ff8a5b;
+  --prio-medium-bg: rgba(230, 180, 80, 0.15);
+  --prio-medium-fg: #e6b450;
+  --prio-low-bg: rgba(150, 160, 175, 0.13);
+  --prio-low-fg: #aab2be;
+
+  --danger: #ff6257;
+  --danger-hover: #ff8077;
+  --danger-soft: rgba(255, 98, 87, 0.14);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.45;
+  font-size: var(--fs-base);
+  font-synthesis: none;
+}
+
+/* Smooth theme switch, but not on first paint (color-mode adds this guard). */
+.color-mode-transition,
+.color-mode-transition *,
+.color-mode-transition *::before,
+.color-mode-transition *::after {
+  transition: background-color 0.2s ease, border-color 0.2s ease,
+    color 0.2s ease !important;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+}
+
+/* Mono numerals — the technical signature. */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* Uppercase micro-label */
+.eyebrow {
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+}
+
+input,
+select,
+button,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* Form controls */
+input[type='text'],
+input[type='search'],
+input[type='date'],
+input:not([type]),
+select,
+textarea {
+  width: 100%;
+  padding: 0.42rem 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+}
+::placeholder {
+  color: var(--text-faint);
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+input[type='color'] {
+  padding: 2px;
+  cursor: pointer;
+}
+
+/* Keyboard focus ring for everything interactive (a11y + part of the look). */
+:focus-visible {
+  outline: none;
+}
+a:focus-visible,
+button:focus-visible,
+[role='button']:focus-visible,
+[role='tab']:focus-visible,
+.btn:focus-visible {
+  box-shadow: 0 0 0 3px var(--accent-ring);
+  border-radius: var(--radius-sm);
+}
+
+/* ---- Buttons ---- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
+  font-size: var(--fs-sm);
+  font-weight: 550;
+  line-height: 1;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease,
+    opacity 0.14s ease, transform 0.04s ease;
+}
+.btn:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+}
+.btn:active:not(:disabled) {
+  transform: translateY(0.5px);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Primary = ink (black in light, white in dark) — not coloured. */
+.btn-primary {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--on-ink);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--ink-hover);
+  border-color: var(--ink-hover);
+}
+
+.btn-ghost {
+  border-color: transparent;
+  background: transparent;
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.btn-danger {
+  color: var(--danger);
+  border-color: transparent;
+  background: transparent;
+}
+.btn-danger:hover:not(:disabled) {
+  background: var(--danger-soft);
+}
+
+.btn-sm {
+  padding: 0.28rem 0.5rem;
+  font-size: var(--fs-xs);
+}
+.btn-icon {
+  padding: 0.4rem;
+  width: 2rem;
+  height: 2rem;
+}
+
+/* kbd hint chip */
+.kbd {
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  line-height: 1;
+  padding: 0.18rem 0.34rem;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+/* Drag-and-drop states (applied by Sortable to the dragged element). */
+.card-ghost {
+  opacity: 0.45;
+  background: var(--accent-soft) !important;
+  border: 1px dashed var(--accent) !important;
+}
+.card-ghost > * {
+  visibility: hidden;
+}
+.card-dragging {
+  box-shadow: var(--shadow-lg);
+  cursor: grabbing;
+}
+
+.error {
+  color: var(--danger);
+  font-size: var(--fs-xs);
+  margin: 0.3rem 0 0;
+}
+
+/* Subtle, dense scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-pill);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}

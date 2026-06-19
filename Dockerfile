@@ -32,9 +32,10 @@ USER node
 
 EXPOSE 3000
 
-# Lightweight health probe (Node 20 has global fetch; any <500 counts as up,
-# so the /login redirect is treated as healthy).
+# Lightweight health probe (Node 20 has global fetch). Hits the dedicated
+# /healthz Nitro route — a dependency-free 200 that doesn't run page SSR or
+# touch Supabase, so it can't false-fail when env is missing or a page errors.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)).then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 CMD ["node", ".output/server/index.mjs"]

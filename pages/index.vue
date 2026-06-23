@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ChartData, ChartOptions } from 'chart.js'
+import type { ChartData, ChartOptions, Plugin } from 'chart.js'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Bar, Doughnut } from 'vue-chartjs'
 import {
@@ -151,6 +151,26 @@ const projectStats = computed(() => {
   return { rows, unassigned: counts.get(null) ?? 0 }
 })
 
+// Snapshot completion (done / total) per project, incl. an Unassigned bucket.
+// Least-complete first, so the work that needs attention floats to the top.
+const projectCompletion = computed(() => {
+  const tot = new Map<number | null, number>()
+  const done = new Map<number | null, number>()
+  for (const t of allTasks.value) {
+    tot.set(t.project_id, (tot.get(t.project_id) ?? 0) + 1)
+    if (t.status === 'done')
+      done.set(t.project_id, (done.get(t.project_id) ?? 0) + 1)
+  }
+  const row = (id: number | null, name: string, color: string | null) => {
+    const total = tot.get(id) ?? 0
+    const d = done.get(id) ?? 0
+    return { id, name, color, total, done: d, rate: total ? Math.round((d / total) * 100) : 0 }
+  }
+  const rows = (projects.value ?? []).map((p) => row(p.id, p.name, p.color))
+  if ((tot.get(null) ?? 0) > 0) rows.push(row(null, 'Unassigned', null))
+  return rows.filter((r) => r.total > 0).sort((a, b) => a.rate - b.rate)
+})
+
 const tagStats = computed(() => {
   const counts = new Map<number, number>()
   for (const t of allTasks.value) {
@@ -192,6 +212,47 @@ const statusChartData = computed<ChartData<'doughnut'>>(() => {
     ],
   }
 })
+// Draws each slice's share (%) centred on its arc. Scoped to the status
+// doughnut via the <Doughnut :plugins> prop, so the bar charts are unaffected.
+const arcPercentPlugin: Plugin<'doughnut'> = {
+  id: 'arcPercent',
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart
+    const meta = chart.getDatasetMeta(0)
+    const data = (chart.data.datasets[0]?.data ?? []) as number[]
+    const total = data.reduce((sum, v) => sum + (v || 0), 0)
+    if (!total) return
+    ctx.save()
+    ctx.font = '600 12px Geist, system-ui, sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    // Round joins so the text outline doesn't sprout spikes at sharp corners.
+    ctx.lineJoin = 'round'
+    ctx.lineCap = 'round'
+    meta.data.forEach((arc, i) => {
+      const value = data[i] || 0
+      if (!value) return
+      const pct = Math.round((value / total) * 100)
+      const { startAngle, endAngle, innerRadius, outerRadius } = arc.getProps(
+        ['startAngle', 'endAngle', 'innerRadius', 'outerRadius'],
+        true,
+      )
+      // Hide the label on very thin slices where it wouldn't fit.
+      if (endAngle - startAngle < 0.25) return
+      const angle = (startAngle + endAngle) / 2
+      const radius = (innerRadius + outerRadius) / 2
+      const x = arc.x + Math.cos(angle) * radius
+      const y = arc.y + Math.sin(angle) * radius
+      ctx.lineWidth = 3
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)'
+      ctx.fillStyle = '#fff'
+      ctx.strokeText(`${pct}%`, x, y)
+      ctx.fillText(`${pct}%`, x, y)
+    })
+    ctx.restore()
+  },
+}
+
 const statusChartOptions = computed<ChartOptions<'doughnut'>>(() => ({
   responsive: true,
   maintainAspectRatio: false,
@@ -382,6 +443,33 @@ const tagChartOptions = computed<ChartOptions<'bar'>>(() => ({
           </div>
         </section>
 
+        <!-- Completion report: per-project, snapshot -->
+        <section class="report">
+          <h2 class="eyebrow group-title">Completion by project</h2>
+          <div v-if="projectCompletion.length" class="report-card">
+            <NuxtLink
+              v-for="r in projectCompletion"
+              :key="r.id ?? 'unassigned'"
+              class="report-row"
+              :to="`/tasks?project=${r.id ?? 0}`"
+            >
+              <span class="report-name">
+                <span
+                  class="report-dot"
+                  :style="{ background: r.color || 'var(--text-faint)' }"
+                />
+                {{ r.name }}
+              </span>
+              <span class="bar" aria-hidden="true">
+                <span class="bar-fill" :style="{ width: `${r.rate}%` }" />
+              </span>
+              <span class="num report-count">{{ r.done }}/{{ r.total }}</span>
+              <span class="num report-pct">{{ r.rate }}%</span>
+            </NuxtLink>
+          </div>
+          <p v-else class="chart-empty report-empty">No projects with tasks yet.</p>
+        </section>
+
         <!-- Charts -->
         <section class="chart-grid">
           <div class="chart-card">
@@ -392,6 +480,7 @@ const tagChartOptions = computed<ChartOptions<'bar'>>(() => ({
                   v-if="palette"
                   :data="statusChartData"
                   :options="statusChartOptions"
+                  :plugins="[arcPercentPlugin]"
                 />
               </ClientOnly>
               <div class="donut-center">
@@ -508,6 +597,76 @@ const tagChartOptions = computed<ChartOptions<'bar'>>(() => ({
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: var(--s4);
+}
+
+/* Completion report */
+.report {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+.report-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.report-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.2fr) minmax(0, 2fr) auto 3.5rem;
+  align-items: center;
+  gap: var(--s4);
+  padding: var(--s3) var(--s5);
+  text-decoration: none;
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+.report-row + .report-row {
+  border-top: 1px solid var(--border);
+}
+.report-row:hover {
+  background: var(--surface-2);
+}
+.report-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  font-weight: 550;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.report-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.bar {
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+.report-count {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  text-align: right;
+}
+.report-pct {
+  font-weight: 600;
+  text-align: right;
+}
+.report-empty {
+  height: auto;
+  padding: var(--s5);
 }
 
 /* Charts */
